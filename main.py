@@ -1,13 +1,12 @@
-import aiosmtplib
-import asyncio
+
 import os
 import requests
-import re
+import smtplib
+import ssl
 
 from datetime import date
 from dotenv import load_dotenv
 from email.message import EmailMessage
-from PIL import Image
 from typing import Tuple
 
 load_dotenv()
@@ -101,42 +100,40 @@ def alternate_parking_status():
         return 'ASP is in effect today.'
     elif parking_status == "SUSPENDED":
         return 'ASP is NOT in effect today.'
-    
 
-async def send_email(*args: str) -> Tuple[dict, str]:
-    host, email, pword, msg, subj = args
+
+def send_email(*args: str) -> Tuple[dict, str]:
+    host, pword, sender, recipients, email_text = args
 
     # build message
     message = EmailMessage()
-    message["From"] = email
-    message["To"] = EMAIL_DESTINATIONS
-    message["Subject"] = subj
-    message.set_content(msg)
-    print(message)
+    message["From"] = sender
+    message["To"] = recipients
+    message["Subject"] = "Morning Announcements"
+    message.set_content(email_text)
+
+    context = ssl.create_default_context()
 
     #send
-    send_kws = dict(username=email, password=pword, hostname=host, port=587, start_tls = True)
-    res = await aiosmtplib.send(message, **send_kws)
-    if not re.search(r"\sOK\s", res[1]):
-        print("Sending email failed.")
-    else:
-        print("Sending email succeeded")
-    return res
+    with smtplib.SMTP_SSL(host, 465, context=context) as smtp:
+        smtp.login(sender, pword)
+        smtp.sendmail(sender, recipients, message.as_string())
 
 
-location_key = LOCATION_KEY
-if location_key == None:
-    location = input('There is no location specified. Please add a zipcode or City, State: ')
-    location_key = find_location_key(location)
-weather = get_alert_time_conditions(location_key)
-park = alternate_parking_status()
-email_text = "Good Morning!\n\nHere are today's commute weather conditions:\n\n" + weather + park + "\n\nHave a good one!"
+def main():
+    location_key = LOCATION_KEY
+    if location_key == None:
+        location = input('There is no location specified. Please add a zipcode or City, State: ')
+        location_key = find_location_key(location)
+    weather = get_alert_time_conditions(location_key)
+    park = alternate_parking_status()
+    email_text = "Good Morning!\n\nHere are today's commute weather conditions:\n\n" + weather + park + "\n\nHave a good one!"
+
+    _host = HOST
+    _pword = GMAIL_PWORD
+    _sender = EMAIL_ORIGIN
+    _recipients = EMAIL_DESTINATIONS
+    send_email(_host, _pword, _sender, _recipients, email_text)
 
 if __name__ == "__main__":
-    _host = HOST
-    _email = EMAIL_ORIGIN
-    _pword = GMAIL_PWORD
-    _msg = email_text
-    _subj = "Morning Announcements"
-    coro = send_email(_host, _email, _pword, _msg, _subj)
-    asyncio.run(coro)
+    main()
