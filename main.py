@@ -74,7 +74,9 @@ def get_alert_time_conditions(location_key):
                 if time_num > 12:
                     time = f'{time_num - 12} p.m.'
                 elif time_num < 12:
-                    time = f'{time} a.m.'
+                    time = f'{time_num} a.m.'
+                elif time_num == 12:
+                    time = f'{time_num} p.m.'
                 weather_text = f'Weather at {time}:\nTemp {temperature}\xb0\nFeel {real_feel}\xb0\nWind {wind} mph\nGusts {wind_gusts} mph\nPrecip {precipitation}%\n\n'
                 weather_message = weather_message + weather_text
         weather_message = ''.join(weather_message)
